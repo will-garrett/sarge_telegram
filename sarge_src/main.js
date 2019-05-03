@@ -13,35 +13,47 @@ var router = express.Router();
 const APP_ENV = process.env.APP_ENV || "local";
 const BOT_TOKEN = process.env.TELEGRAM_TOKEN;
 
-var ngrok = {
-    container: process.env.NGROK_CONTAINER || "ngrok_telegram",
-    port: process.env.NGROK_PORT || "4040",
-    protocol: process.env.NGROK_PROTOCOL || "https"
-};
 var telegram_interface = require("./lib/telegram");
-
+var sarge = require("./lib/sarge");
 
 if(APP_ENV == "local"){
-    console.log("Token:",BOT_TOKEN);
+    var ngrok = {
+        container: process.env.NGROK_CONTAINER || "ngrok_telegram",
+        port: process.env.NGROK_PORT || "4040",
+        protocol: process.env.NGROK_PROTOCOL || "https"
+    };    
     var ngrok_service = require("./lib/ngrok");
-    var result = ngrok_service.getNgrokURL().then(async (callback_url)=>{
-        await telegram_interface.getTelegramBot(BOT_TOKEN, callback_url).then(async (result)=>{
-            console.log("URL:", await callback_url);
-            let is_configured = telegram_interface.checkTelegramConfig(result.data, callback_url);
-            console.log("Configured:",is_configured);
+    var result = ngrok_service.getNgrokURL().then((callback_url)=>{
+        telegram_interface.getTelegramBot(BOT_TOKEN, callback_url).then((result)=>{
+            let is_configured = telegram_interface.checkBotConfig(result.data, callback_url);
+            console.log("Ngrok is_configured : ",is_configured);
             if(!is_configured){
-                telegram_interface.setCallback(BOT_TOKEN, callback_url);
+                console.log("Setting webhook for callback...");
+                telegram_interface.setTelegramBot(BOT_TOKEN, callback_url);
             }
         })
         .catch((err)=>{
             console.dir(err);
         });
-        //
     });
+}
+else if(APP_ENV == "production"){
+    // TODO set production host discovery
+
+}
+else{
+
 }
 
 router.post("*", (req, res)=>{
-    console.dir(req.body);
+    var commands = sarge.parseMessage(req.body);
+    var chat_id = req.body.message.chat.id;
+    console.log("Executing:");
+    console.dir(commands);
+    var results = sarge.processCommands(commands);
+    for (const result of results) {
+        telegram_interface.sendMessage(BOT_TOKEN, chat_id, result);
+    }
     res.status(200);
     res.json({ok:true});
 });

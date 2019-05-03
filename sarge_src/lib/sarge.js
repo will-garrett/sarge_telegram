@@ -1,4 +1,5 @@
 var Url = require("url-parse");
+var youtube = require("./youtube");
 
 function parseMessage(update){
     let is_valid = validateMessage(update);
@@ -37,11 +38,31 @@ function validateMessage(msg){
 }
 function parseURLEntity(url_string){
     let url = new Url(url_string);
-    if(url.host == "youtu.be" || url.host == "youtube.com"){
+    console.log(url.host);
+    if(url.host == "youtu.be" || 
+    url.host == "youtube.com" || 
+    url.host == "www.youtu.be" ||
+    url.host == "www.youtube.com"){
         return {type: "youtube-dl", link: url.href};
     }
     else{
         return {type: "unknown", link: url.href};
     }
 }
+function processCommands(commands){
+    var results = [];
+    for (const command of commands) {
+        switch(command.type){
+            case "youtube-dl":
+                results.push(youtube.getYoutube(command.link));
+                break;
+            default:
+                console.log("Unknown command...");
+                break;
+        }
+    }
+    return results;
+}
+
 module.exports.parseMessage=parseMessage;
+module.exports.processCommands=processCommands;
