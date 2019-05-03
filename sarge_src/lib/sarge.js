@@ -1,21 +1,47 @@
-var axios = require("axios");
-var querystring = require("querystring");
+var Url = require("url-parse");
 
-
-function setTelegramWebhook(token, callback_url){
-    console.log("Callback URL:",callback_url);
-    console.log(querystring.stringify(callback_url));
-    let url = "https://api.telegram.org/bot"+token+"/setWebhook?url="+encodeURIComponent(callback_url);
-    console.log("sending...", url);
-    axios.get(url).then((result)=>{
-        console.dir(result.status);
-        console.log(result.data);
-        //console.dir(result);
-    }).catch((error)=>{
-        console.log("Error: ", error.status);
-        console.dir(error);
-        process.exit(1);
-    })
-};
-
-module.exports.setCallback = setTelegramWebhook;
+function parseMessage(update){
+    let is_valid = validateMessage(update);
+    var result = [];
+    if(is_valid){
+        msg = update.message;
+        if(msg.hasOwnProperty("entities")){
+            let urls = [];
+            let commands = [];
+            for (const entity of msg.entities) {
+                if(entity.type == "url"){
+                    urls.push(msg.text.substr(entity.offset, entity.length));
+                }             
+            }
+            for(url of urls){
+                result.push(parseURLEntity(url));
+            }
+        }
+        else{
+            // TODO send message "not sure what you want me to do, maggot!"
+        }
+    }
+    return result;
+}
+function validateMessage(msg){
+    let flag = false;
+    if(msg.hasOwnProperty("message")){
+        if(msg.message.hasOwnProperty("chat") && 
+            msg.message.hasOwnProperty("from") && 
+            msg.message.hasOwnProperty("text") &&
+            msg.message.hasOwnProperty("date")){
+                flag = true;
+            }
+    }
+    return flag;
+}
+function parseURLEntity(url_string){
+    let url = new Url(url_string);
+    if(url.host == "youtu.be" || url.host == "youtube.com"){
+        return {type: "youtube-dl", link: url.href};
+    }
+    else{
+        return {type: "unknown", link: url.href};
+    }
+}
+module.exports.parseMessage=parseMessage;
