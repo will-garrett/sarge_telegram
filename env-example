@@ -1,0 +1,6 @@
+APP_ENV=local
+
+NGROK_AUTH=ngrok-token-goes-here
+NGROK_PORT=sarge:3000
+
+TELEGRAM_TOKEN=telegram-bot-token-goes-here
